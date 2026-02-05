@@ -272,6 +272,30 @@
                 Select the camera types and quantities you need.
               </p>
 
+              <!-- Scenario A Sub-Options (only visible in Scenario A) -->
+              <div id="scenarioAOptions" class="scenario-a-options" style="display: none;" data-astro-cid-j7pv25f6>
+                <div class="options-grid" data-astro-cid-j7pv25f6>
+                  <button class="option-card selected" data-value="recommended" data-astro-cid-j7pv25f6>
+                    <div class="option-icon" data-astro-cid-j7pv25f6>📹</div>
+                    <div class="option-label" data-astro-cid-j7pv25f6>
+                      Replace with Sighthound's recommended setup
+                    </div>
+                    <div class="option-desc" data-astro-cid-j7pv25f6>
+                      Standard IP Cameras + Compute Nodes
+                    </div>
+                  </button>
+                  <button class="option-card" data-value="smart" data-astro-cid-j7pv25f6>
+                    <div class="option-icon" data-astro-cid-j7pv25f6>🤖</div>
+                    <div class="option-label" data-astro-cid-j7pv25f6>
+                      Replace with Sighthound's Smart/AI setup
+                    </div>
+                    <div class="option-desc" data-astro-cid-j7pv25f6>
+                      Smart Cameras with built-in analytics
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <div class="hardware-config" data-astro-cid-j7pv25f6>
                 <!-- Standard IP Cameras -->
                 <div class="hardware-item" data-astro-cid-j7pv25f6>
@@ -293,6 +317,9 @@
                       <div class="hardware-price" data-astro-cid-j7pv25f6>
                         $250 each
                       </div>
+                      <div id="nodeRequiredWarning" class="node-required-warning" style="display: none;" data-astro-cid-j7pv25f6>
+                        A node purchase would be needed to run analytics
+                      </div>
                     </div>
 
                     <div class="hardware-controls" data-astro-cid-j7pv25f6>
@@ -309,7 +336,7 @@
                         type="number"
                         id="standardCameras"
                         class="number-input-small"
-                        value="8"
+                        value="1"
                         min="0"
                         max="999"
                         data-astro-cid-j7pv25f6
@@ -333,7 +360,7 @@
                     <div class="hardware-info" data-astro-cid-j7pv25f6>
                       <div class="hardware-label" data-astro-cid-j7pv25f6>
                         Sighthound Smart Cameras
-                        <button class="tooltip" title="Smart Camera: AI-ready, premium on-device analytics (recommended)" aria-label="Smart Camera: AI-ready, premium on-device analytics (recommended)" aria-describedby="tooltip-smart" data-astro-cid-j7pv25f6> 
+                        <button class="tooltip" title="Smart Camera: AI-ready, premium on-device analytics" aria-label="Smart Camera: AI-ready, premium on-device analytics" aria-describedby="tooltip-smart" data-astro-cid-j7pv25f6> 
                           <span class="tooltip-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
                               <circle cx="12" cy="12" r="10" stroke="#6b7280" stroke-width="1.5" fill="none"></circle>
@@ -341,7 +368,7 @@
                               <path d="M11.9 11.5h.1v5" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                           </span>
-                          <span class="tooltip-text" role="tooltip" id="tooltip-smart">Smart Camera: AI-ready, premium on-device analytics (recommended)</span>
+                          <span class="tooltip-text" role="tooltip" id="tooltip-smart">Smart Camera: AI-ready, premium on-device analytics</span>
                         </button>
                       </div>
                       <div class="hardware-price" data-astro-cid-j7pv25f6>
@@ -389,7 +416,7 @@
                     class="hardware-summary-value"
                     data-astro-cid-j7pv25f6
                   >
-                    8
+                    1
                   </span>
                 </div>
 
@@ -678,9 +705,6 @@
                 </button>
 
                 <div class="row-actions" data-astro-cid-j7pv25f6>
-                  <button class="btn btn-text btn-back" id="backStep5" data-astro-cid-j7pv25f6>
-                    Back
-                  </button>
                   <button class="btn btn-text" id="editAnswers" data-astro-cid-j7pv25f6>
                     Edit my answers
                   </button>

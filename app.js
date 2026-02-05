@@ -7,9 +7,11 @@ const state = {
   // `cameraType` is retained for backwards-compatibility and also stores the raw option value
   // ("scenario-a" | "scenario-b" | "scenario-c").
   cameraType: "",
-  standardCameras: 8,
+  // Scenario A sub-option: "recommended" (Standard IP + Nodes) or "smart" (Smart cameras only)
+  scenarioAOption: "recommended",
+  standardCameras: 1,
   smartCameras: 0,
-  computeNodes: 2,
+  computeNodes: 1,
   autoAddNodes: true,
   software: [],
   currentMonthly: 0,
@@ -104,14 +106,23 @@ function applyScenarioBehavior() {
   const step4 = document.getElementById("step4");
   const step2Helper = document.querySelector("#step2 .step-helper");
   const smartHardwareItem = smartInput ? smartInput.closest(".hardware-item") : null;
+  const stdHardwareItem = stdInput ? stdInput.closest(".hardware-item") : null;
   const stdPriceEl = document.querySelector("#step2 .hardware-item .hardware-price");
+  const scenarioAOptions = document.getElementById("scenarioAOptions");
+  const autoAddSection = document.querySelector(".auto-add-section");
+  const computeNodesItem = document.getElementById("computeNodes")?.closest(".hardware-item");
 
   const inScenarioB = isScenarioB();
+
+  // Show/hide Scenario A sub-options
+  if (scenarioAOptions) {
+    scenarioAOptions.style.display = isScenarioA() ? "block" : "none";
+  }
 
   // Scenario-specific helper copy for Step 2
   if (step2Helper) {
     if (isScenarioA()) {
-      step2Helper.textContent = "Select the camera types and quantities you need.";
+      step2Helper.textContent = "Choose your replacement setup and configure quantities.";
     } else if (inScenarioB) {
       step2Helper.textContent = "How many Standard IP cameras will you reuse?";
     } else if (isScenarioC()) {
@@ -132,7 +143,7 @@ function applyScenarioBehavior() {
     }
   }
 
-  // Default: everything enabled & visible (scenario branches may hide Smart cameras for reuse)
+  // Default: everything enabled & visible (scenario branches may hide elements)
   if (stdInput) stdInput.disabled = false;
   if (smartInput) smartInput.disabled = false;
   stdButtons.forEach((b) => {
@@ -148,19 +159,46 @@ function applyScenarioBehavior() {
   if (hardwareConfig) hardwareConfig.style.opacity = "1";
   if (step4) step4.style.display = "";
   if (smartHardwareItem) smartHardwareItem.style.display = "";
+  if (stdHardwareItem) stdHardwareItem.style.display = "";
+  if (autoAddSection) autoAddSection.style.display = "";
+  if (computeNodesItem) computeNodesItem.style.display = "";
 
   // Normalize camera counts based on current inputs
   const stdCount = stdInput ? parseInt(stdInput.value, 10) || 0 : state.standardCameras;
   const smartCount = smartInput ? parseInt(smartInput.value, 10) || 0 : state.smartCameras;
   const totalCameras = stdCount + smartCount;
 
-  // Scenario A (replace): keep total camera count, map entirely to Standard IP for Sighthound side.
+  // Scenario A (replace): apply sub-option behavior
   if (isScenarioA()) {
-    const cameraCount = totalCameras > 0 ? totalCameras : state.standardCameras + state.smartCameras;
-    state.standardCameras = cameraCount;
-    state.smartCameras = 0;
-    if (stdInput) stdInput.value = String(state.standardCameras);
-    if (smartInput) smartInput.value = "0";
+    const cameraCount = totalCameras > 0 ? totalCameras : Math.max(1, state.standardCameras + state.smartCameras);
+    
+    if (state.scenarioAOption === "recommended") {
+      // Recommended setup: Standard IP cameras + Compute Nodes
+      state.standardCameras = cameraCount;
+      state.smartCameras = 0;
+      if (stdInput) stdInput.value = String(state.standardCameras);
+      if (smartInput) smartInput.value = "0";
+      // Hide smart cameras, show standard + nodes
+      if (smartHardwareItem) smartHardwareItem.style.display = "none";
+      if (stdHardwareItem) stdHardwareItem.style.display = "";
+      if (autoAddSection) autoAddSection.style.display = "";
+      if (computeNodesItem) computeNodesItem.style.display = "";
+    } else {
+      // Smart/AI setup: Smart cameras only, no nodes needed
+      state.smartCameras = cameraCount;
+      state.standardCameras = 0;
+      if (smartInput) smartInput.value = String(state.smartCameras);
+      if (stdInput) stdInput.value = "0";
+      // Hide standard cameras and nodes, show smart cameras
+      if (stdHardwareItem) stdHardwareItem.style.display = "none";
+      if (smartHardwareItem) smartHardwareItem.style.display = "";
+      if (autoAddSection) autoAddSection.style.display = "none";
+      if (computeNodesItem) computeNodesItem.style.display = "none";
+      // Clear nodes since not needed for smart cameras
+      state.computeNodes = 0;
+      const computeNodesInput = document.getElementById("computeNodes");
+      if (computeNodesInput) computeNodesInput.value = "0";
+    }
     updateCamerasAndNodes();
   }
 
@@ -176,13 +214,13 @@ function applyScenarioBehavior() {
     updateCamerasAndNodes();
   }
 
-    if (isScenarioC()) {
-      // Scenario C — new deployment; treat all cameras as new Standard IP by default.
-    const cameraCount = totalCameras > 0 ? totalCameras : state.standardCameras + state.smartCameras;
-    state.standardCameras = cameraCount;
-    state.smartCameras = 0;
-    if (stdInput) stdInput.value = String(state.standardCameras);
-    if (smartInput) smartInput.value = "0";
+  if (isScenarioC()) {
+    // Scenario C — new deployment; show both Standard IP and Smart camera options.
+    // Both camera types and nodes are available for selection.
+    if (smartHardwareItem) smartHardwareItem.style.display = "";
+    if (stdHardwareItem) stdHardwareItem.style.display = "";
+    if (autoAddSection) autoAddSection.style.display = "";
+    if (computeNodesItem) computeNodesItem.style.display = "";
     updateCamerasAndNodes();
 
     // Scenario C — no current-cost step.
@@ -207,12 +245,13 @@ function attachEventHandlers() {
 
     if (btn.id === "continueStep2") {
       e.preventDefault();
-      // OPTION C — require at least one camera before advancing
+      // OPTION C — require at least one camera or one node before advancing
       const totalCameras =
         (parseInt(document.getElementById("standardCameras")?.value, 10) || 0) +
         (parseInt(document.getElementById("smartCameras")?.value, 10) || 0);
-      if (isScenarioC() && totalCameras === 0) {
-        alert("Please enter at least one camera for a new deployment.");
+      const totalNodes = parseInt(document.getElementById("computeNodes")?.value, 10) || 0;
+      if (isScenarioC() && totalCameras === 0 && totalNodes === 0) {
+        alert("Please enter at least one camera or one compute node for a new deployment.");
         return;
       }
       // After camera config, go to software step.
@@ -369,6 +408,27 @@ function attachEventHandlers() {
     });
   });
 
+  // Scenario A sub-options (recommended vs smart setup)
+  const scenarioAOptionCards = document.querySelectorAll("#scenarioAOptions .option-card");
+  scenarioAOptionCards.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const value = btn.dataset.value;
+      if (!value) return;
+      
+      // Update state
+      state.scenarioAOption = value;
+      console.log(`[savings] Scenario A sub-option set to: ${value}`);
+      
+      // Update selected state on cards
+      scenarioAOptionCards.forEach((card) => card.classList.remove("selected"));
+      btn.classList.add("selected");
+      
+      // Re-apply scenario behavior to show/hide appropriate hardware
+      applyScenarioBehavior();
+    });
+  });
+
   // Standard cameras steppers and input
   document.querySelectorAll('[data-target="standardCameras"]').forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -452,8 +512,9 @@ function attachEventHandlers() {
     const totalCameras =
       (parseInt(document.getElementById("standardCameras")?.value, 10) || 0) +
       (parseInt(document.getElementById("smartCameras")?.value, 10) || 0);
-    if (isScenarioC() && totalCameras === 0) {
-      alert("Please enter at least one camera for a new deployment.");
+    const totalNodes = parseInt(document.getElementById("computeNodes")?.value, 10) || 0;
+    if (isScenarioC() && totalCameras === 0 && totalNodes === 0) {
+      alert("Please enter at least one camera or one compute node for a new deployment.");
       return;
     }
     if (isScenarioC()) {
@@ -690,8 +751,10 @@ onClick("downloadPdf", () => {
 // ---------- CAMERA / NODE LOGIC ----------
 function updateCamerasAndNodes() {
   const totalCameras = state.standardCameras + state.smartCameras;
+  // Only standard IP cameras need compute nodes; smart cameras have built-in analytics
+  const camerasNeedingNodes = state.standardCameras;
   const suggestedNodes =
-    totalCameras > 0 ? Math.ceil(totalCameras / CAMERAS_PER_NODE) : 0;
+    camerasNeedingNodes > 0 ? Math.ceil(camerasNeedingNodes / CAMERAS_PER_NODE) : 0;
 
   const totalDisplay = document.getElementById("totalCamerasDisplay");
   if (totalDisplay) totalDisplay.textContent = String(totalCameras);
@@ -699,7 +762,7 @@ function updateCamerasAndNodes() {
   const computeNodesInput = document.getElementById("computeNodes");
   const nodeStepperButtons = document.querySelectorAll('[data-target="computeNodes"]');
 
-  if (state.autoAddNodes && totalCameras > 0) {
+  if (state.autoAddNodes && camerasNeedingNodes > 0) {
     state.computeNodes = suggestedNodes;
 
     if (computeNodesInput) {
@@ -726,38 +789,48 @@ function updateCamerasAndNodes() {
     });
   }
 
-  updateNodeStatus(totalCameras, suggestedNodes);
+  updateNodeStatus(camerasNeedingNodes, suggestedNodes);
+
+  // Show warning if user has Standard IP cameras but no nodes
+  const nodeRequiredWarning = document.getElementById("nodeRequiredWarning");
+  if (nodeRequiredWarning) {
+    if (state.standardCameras > 0 && state.computeNodes === 0) {
+      nodeRequiredWarning.style.display = "block";
+    } else {
+      nodeRequiredWarning.style.display = "none";
+    }
+  }
 }
 
-function updateNodeStatus(totalCameras, suggestedNodes) {
+function updateNodeStatus(standardCameras, suggestedNodes) {
   const nodeStatus = document.getElementById("nodeStatus");
   if (!nodeStatus) return;
 
   const capacity = state.computeNodes * CAMERAS_PER_NODE;
   const requiredNodes = suggestedNodes;
 
-  if (totalCameras === 0) {
+  if (standardCameras === 0) {
     nodeStatus.className = "node-status neutral";
     nodeStatus.textContent =
-      "Each compute node supports up to 4 camera streams. Your configuration requires 0 node(s).";
+      "Each compute node supports up to 4 Standard IP camera streams. Smart cameras have built-in analytics and do not require nodes.";
   } else if (state.computeNodes === 0) {
     nodeStatus.className = "node-status info";
     nodeStatus.textContent =
-      `Each compute node supports up to 4 camera streams. Your configuration requires ${requiredNodes} node${
+      `Each compute node supports up to 4 Standard IP camera streams. Your configuration requires ${requiredNodes} node${
         requiredNodes === 1 ? "" : "s"
       }. No nodes selected yet.`;
-  } else if (capacity < totalCameras) {
+  } else if (capacity < standardCameras) {
     nodeStatus.className = "node-status warning";
     nodeStatus.textContent =
-      `Each compute node supports up to 4 camera streams. Your configuration requires ${requiredNodes} node${
+      `Each compute node supports up to 4 Standard IP camera streams. Your configuration requires ${requiredNodes} node${
         requiredNodes === 1 ? "" : "s"
-      }, but selected nodes only support ${capacity} camera stream${capacity === 1 ? "" : "s"} for ${totalCameras} configured.`;
+      }, but selected nodes only support ${capacity} stream${capacity === 1 ? "" : "s"} for ${standardCameras} Standard IP camera${standardCameras === 1 ? "" : "s"}.`;
   } else {
     nodeStatus.className = "node-status success";
     nodeStatus.textContent =
-      `Each compute node supports up to 4 camera streams. Your configuration requires ${requiredNodes} node${
+      `Each compute node supports up to 4 Standard IP camera streams. Your configuration requires ${requiredNodes} node${
         requiredNodes === 1 ? "" : "s"
-      }. Selected nodes can support up to ${capacity} camera stream${capacity === 1 ? "" : "s"}.`;
+      }. Selected nodes can support up to ${capacity} stream${capacity === 1 ? "" : "s"}.`;
   }
 }
 
@@ -984,13 +1057,20 @@ function updateCostComparison() {
     scenarioLead = `Cost comparison over ${state.timeframe} months.`;
   }
 
-  const scenarioContext = isScenarioA()
-    ? "Comparing your current smart / AI camera system with a Sighthound configuration using Standard IP cameras and Compute Nodes."
-    : isScenarioB()
-    ? "Assumes your existing Standard IP cameras remain in place and Sighthound provides nodes and analytics on top."
-    : isScenarioC()
-    ? "All hardware and software are treated as new for this deployment."
-    : "";
+  let scenarioContext;
+  if (isScenarioA()) {
+    if (state.scenarioAOption === "smart") {
+      scenarioContext = "Replacing your current smart / AI camera system with Sighthound Smart Cameras (built-in analytics).";
+    } else {
+      scenarioContext = "Replacing your current smart / AI camera system with Standard IP Cameras and Compute Nodes.";
+    }
+  } else if (isScenarioB()) {
+    scenarioContext = "Assumes your existing Standard IP cameras remain in place and Sighthound provides nodes and analytics on top.";
+  } else if (isScenarioC()) {
+    scenarioContext = "All hardware and software are treated as new for this deployment.";
+  } else {
+    scenarioContext = "";
+  }
 
   const summaryLines = [
     scenarioLead,
@@ -1056,6 +1136,9 @@ function updateSavingsCard() {
   // OPTION A — Smart / AI cameras with built-in analytics
   // Savings language is allowed and must be labeled "Estimated savings".
   if (isScenarioA()) {
+    const setupDesc = state.scenarioAOption === "smart"
+      ? "Sighthound Smart Cameras with built-in analytics"
+      : "Standard IP Cameras with Compute Nodes";
     if (savings > 0) {
       el.className = "savings-card";
       el.innerHTML =
@@ -1067,7 +1150,7 @@ function updateSavingsCard() {
       el.innerHTML =
         `<strong>Estimated replacement cost</strong><br>` +
         `Additional investment of ${fmt.format(Math.abs(savings))} over ${state.timeframe} months. ` +
-        `This reflects moving from camera-embedded analytics to centralized Sighthound analytics.`;
+        `This reflects replacing your current system with ${setupDesc}.`;
     }
     return;
   }
@@ -1273,7 +1356,11 @@ async function generatePDF() {
   // Explicit scenario line for quick scanning in the PDF
   let scenarioLabel = "Custom scenario";
   if (isScenarioA()) {
-    scenarioLabel = "Replace current smart / AI camera system";
+    if (state.scenarioAOption === "smart") {
+      scenarioLabel = "Replace with Sighthound Smart Cameras (built-in analytics)";
+    } else {
+      scenarioLabel = "Replace with Standard IP Cameras + Compute Nodes";
+    }
   } else if (isScenarioB()) {
     scenarioLabel = "Reuse existing Standard IP cameras (upgrade)";
   } else if (isScenarioC()) {
@@ -1294,11 +1381,14 @@ async function generatePDF() {
         [34, 197, 94] // bright green accent
       );
     } else if (savings < 0) {
+      const pdfSetupDesc = state.scenarioAOption === "smart"
+        ? "Sighthound Smart Cameras with built-in analytics"
+        : "Standard IP Cameras with Compute Nodes";
       drawCard(
         "Estimated replacement cost",
         [
           `Additional investment over ${state.timeframe} months: ${fmt.format(Math.abs(savings))}.`,
-          "Reflects moving from camera-embedded analytics to centralized Sighthound analytics.",
+          `Reflects replacing your current system with ${pdfSetupDesc}.`,
         ],
         [239, 68, 68] // red accent
       );
@@ -1417,14 +1507,20 @@ async function generatePDF() {
 
   // Card 3: Configuration snapshot
   let cameraTypeLabel = "Not specified";
-  if (isScenarioA()) cameraTypeLabel = "Smart cameras";
-  else if (isScenarioB()) cameraTypeLabel = "IP cameras";
-  else if (isScenarioC()) cameraTypeLabel = "New deployment";
+  if (isScenarioA()) {
+    cameraTypeLabel = state.scenarioAOption === "smart"
+      ? "Sighthound Smart Cameras (replacement)"
+      : "Standard IP + Compute Nodes (replacement)";
+  } else if (isScenarioB()) {
+    cameraTypeLabel = "IP cameras";
+  } else if (isScenarioC()) {
+    cameraTypeLabel = "New deployment";
+  }
 
   drawCard(
     "Configuration snapshot",
     [
-      `Camera type: ${cameraTypeLabel}`,
+      `Scenario: ${cameraTypeLabel}`,
       `Standard IP cameras: ${state.standardCameras}`,
       `Smart cameras: ${state.smartCameras}`,
       `Compute nodes: ${state.computeNodes} (up to ${
