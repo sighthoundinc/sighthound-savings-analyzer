@@ -1565,6 +1565,35 @@ label {
   color: #6b7280;
   text-align: left;
 }
+.option-desc[data-astro-cid-j7pv25f6] {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 400;
+}
+.scenario-a-options[data-astro-cid-j7pv25f6] {
+  margin-bottom: 24px;
+}
+.scenario-a-options[data-astro-cid-j7pv25f6] .options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.scenario-a-options[data-astro-cid-j7pv25f6] .option-card {
+  padding: 20px;
+}
+.scenario-a-options[data-astro-cid-j7pv25f6] .option-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+.scenario-a-options[data-astro-cid-j7pv25f6] .option-label {
+  font-size: 14px;
+}
+@media (max-width: 600px) {
+  .scenario-a-options[data-astro-cid-j7pv25f6] .options-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .hardware-config[data-astro-cid-j7pv25f6] {
   background: #f8f9fb;
   border-radius: 12px;
@@ -1714,6 +1743,12 @@ label {
 .node-status[data-astro-cid-j7pv25f6].warning {
   background: #fef3c7;
   color: #92400e;
+}
+.node-required-warning[data-astro-cid-j7pv25f6] {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #92400e;
+  font-weight: 500;
 }
 .node-status[data-astro-cid-j7pv25f6].info {
   background: #e0e7ff;
