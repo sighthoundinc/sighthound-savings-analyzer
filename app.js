@@ -7,9 +7,9 @@ const state = {
   // `cameraType` is retained for backwards-compatibility and also stores the raw option value
   // ("scenario-a" | "scenario-b" | "scenario-c").
   cameraType: "",
-  standardCameras: 8,
+  standardCameras: 1,
   smartCameras: 0,
-  computeNodes: 2,
+  computeNodes: 1,
   autoAddNodes: true,
   software: [],
   currentMonthly: 0,
@@ -207,12 +207,13 @@ function attachEventHandlers() {
 
     if (btn.id === "continueStep2") {
       e.preventDefault();
-      // OPTION C — require at least one camera before advancing
+      // OPTION C — require at least one camera or one node before advancing
       const totalCameras =
         (parseInt(document.getElementById("standardCameras")?.value, 10) || 0) +
         (parseInt(document.getElementById("smartCameras")?.value, 10) || 0);
-      if (isScenarioC() && totalCameras === 0) {
-        alert("Please enter at least one camera for a new deployment.");
+      const totalNodes = parseInt(document.getElementById("computeNodes")?.value, 10) || 0;
+      if (isScenarioC() && totalCameras === 0 && totalNodes === 0) {
+        alert("Please enter at least one camera or one compute node for a new deployment.");
         return;
       }
       // After camera config, go to software step.
@@ -452,8 +453,9 @@ function attachEventHandlers() {
     const totalCameras =
       (parseInt(document.getElementById("standardCameras")?.value, 10) || 0) +
       (parseInt(document.getElementById("smartCameras")?.value, 10) || 0);
-    if (isScenarioC() && totalCameras === 0) {
-      alert("Please enter at least one camera for a new deployment.");
+    const totalNodes = parseInt(document.getElementById("computeNodes")?.value, 10) || 0;
+    if (isScenarioC() && totalCameras === 0 && totalNodes === 0) {
+      alert("Please enter at least one camera or one compute node for a new deployment.");
       return;
     }
     if (isScenarioC()) {
@@ -690,8 +692,10 @@ onClick("downloadPdf", () => {
 // ---------- CAMERA / NODE LOGIC ----------
 function updateCamerasAndNodes() {
   const totalCameras = state.standardCameras + state.smartCameras;
+  // Only standard IP cameras need compute nodes; smart cameras have built-in analytics
+  const camerasNeedingNodes = state.standardCameras;
   const suggestedNodes =
-    totalCameras > 0 ? Math.ceil(totalCameras / CAMERAS_PER_NODE) : 0;
+    camerasNeedingNodes > 0 ? Math.ceil(camerasNeedingNodes / CAMERAS_PER_NODE) : 0;
 
   const totalDisplay = document.getElementById("totalCamerasDisplay");
   if (totalDisplay) totalDisplay.textContent = String(totalCameras);
@@ -699,7 +703,7 @@ function updateCamerasAndNodes() {
   const computeNodesInput = document.getElementById("computeNodes");
   const nodeStepperButtons = document.querySelectorAll('[data-target="computeNodes"]');
 
-  if (state.autoAddNodes && totalCameras > 0) {
+  if (state.autoAddNodes && camerasNeedingNodes > 0) {
     state.computeNodes = suggestedNodes;
 
     if (computeNodesInput) {
@@ -726,38 +730,38 @@ function updateCamerasAndNodes() {
     });
   }
 
-  updateNodeStatus(totalCameras, suggestedNodes);
+  updateNodeStatus(camerasNeedingNodes, suggestedNodes);
 }
 
-function updateNodeStatus(totalCameras, suggestedNodes) {
+function updateNodeStatus(standardCameras, suggestedNodes) {
   const nodeStatus = document.getElementById("nodeStatus");
   if (!nodeStatus) return;
 
   const capacity = state.computeNodes * CAMERAS_PER_NODE;
   const requiredNodes = suggestedNodes;
 
-  if (totalCameras === 0) {
+  if (standardCameras === 0) {
     nodeStatus.className = "node-status neutral";
     nodeStatus.textContent =
-      "Each compute node supports up to 4 camera streams. Your configuration requires 0 node(s).";
+      "Each compute node supports up to 4 Standard IP camera streams. Smart cameras have built-in analytics and do not require nodes.";
   } else if (state.computeNodes === 0) {
     nodeStatus.className = "node-status info";
     nodeStatus.textContent =
-      `Each compute node supports up to 4 camera streams. Your configuration requires ${requiredNodes} node${
+      `Each compute node supports up to 4 Standard IP camera streams. Your configuration requires ${requiredNodes} node${
         requiredNodes === 1 ? "" : "s"
       }. No nodes selected yet.`;
-  } else if (capacity < totalCameras) {
+  } else if (capacity < standardCameras) {
     nodeStatus.className = "node-status warning";
     nodeStatus.textContent =
-      `Each compute node supports up to 4 camera streams. Your configuration requires ${requiredNodes} node${
+      `Each compute node supports up to 4 Standard IP camera streams. Your configuration requires ${requiredNodes} node${
         requiredNodes === 1 ? "" : "s"
-      }, but selected nodes only support ${capacity} camera stream${capacity === 1 ? "" : "s"} for ${totalCameras} configured.`;
+      }, but selected nodes only support ${capacity} stream${capacity === 1 ? "" : "s"} for ${standardCameras} Standard IP camera${standardCameras === 1 ? "" : "s"}.`;
   } else {
     nodeStatus.className = "node-status success";
     nodeStatus.textContent =
-      `Each compute node supports up to 4 camera streams. Your configuration requires ${requiredNodes} node${
+      `Each compute node supports up to 4 Standard IP camera streams. Your configuration requires ${requiredNodes} node${
         requiredNodes === 1 ? "" : "s"
-      }. Selected nodes can support up to ${capacity} camera stream${capacity === 1 ? "" : "s"}.`;
+      }. Selected nodes can support up to ${capacity} stream${capacity === 1 ? "" : "s"}.`;
   }
 }
 
