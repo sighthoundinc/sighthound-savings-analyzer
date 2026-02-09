@@ -932,44 +932,69 @@ function updateRecommendedSetup(monthlySoftwareTotal) {
   const hardwareNodes = state.computeNodes * PRICES.node;
   const hardwareTotal = hardwareStandard + hardwareSmart + hardwareNodes;
 
-  const parts = [];
-
+  // Build simple line items
+  let html = '<div class="breakdown-section">';
+  html += '<div class="breakdown-title">Hardware</div>';
+  
   if (state.standardCameras > 0) {
-    parts.push(
-      reuseStandard
-        ? `${state.standardCameras} × Standard IP camera${
-            state.standardCameras > 1 ? "s" : ""
-          } (existing hardware, not included in Sighthound hardware cost)`
-        : `${state.standardCameras} × Standard IP camera${
-            state.standardCameras > 1 ? "s" : ""
-          } (${fmt.format(hardwareStandard)})`
-    );
+    html += `<div class="breakdown-row">`;
+    html += reuseStandard
+      ? `<span>Standard IP Cameras (${state.standardCameras})</span>`
+      : `<span>Standard IP Cameras (${fmt.format(PRICES.standardCamera)} × ${state.standardCameras})</span>`;
+    html += reuseStandard 
+      ? `<span class="breakdown-value muted">Existing</span>`
+      : `<span class="breakdown-value">${fmt.format(hardwareStandard)}</span>`;
+    html += `</div>`;
   }
+  
   if (state.smartCameras > 0) {
-    parts.push(
-      `${state.smartCameras} × Sighthound Smart camera${state.smartCameras > 1 ? "s" : ""} (${fmt.format(hardwareSmart)})`
-    );
+    html += `<div class="breakdown-row">`;
+    html += `<span>Smart Cameras (${fmt.format(PRICES.smartCamera)} × ${state.smartCameras})</span>`;
+    html += `<span class="breakdown-value">${fmt.format(hardwareSmart)}</span>`;
+    html += `</div>`;
   }
+  
   if (state.computeNodes > 0) {
-    parts.push(
-      `${state.computeNodes} × Compute node${state.computeNodes > 1 ? "s" : ""} (${state.computeNodes * CAMERAS_PER_NODE} camera capacity) (${fmt.format(hardwareNodes)})`
-    );
+    html += `<div class="breakdown-row">`;
+    html += `<span>Compute Nodes (${fmt.format(PRICES.node)} × ${state.computeNodes})</span>`;
+    html += `<span class="breakdown-value">${fmt.format(hardwareNodes)}</span>`;
+    html += `</div>`;
   }
+  
+  if (state.standardCameras === 0 && state.smartCameras === 0 && state.computeNodes === 0) {
+    html += `<div class="breakdown-row muted"><span>No hardware configured</span></div>`;
+  }
+  
+  html += `<div class="breakdown-row breakdown-subtotal">`;
+  html += `<span>Hardware Total</span>`;
+  html += `<span class="breakdown-value">${fmt.format(hardwareTotal)}</span>`;
+  html += `</div>`;
+  html += '</div>';
+  
+  // Software section
+  html += '<div class="breakdown-section">';
+  html += '<div class="breakdown-title">Software (Monthly)</div>';
+  
+  if (totalCameras > 0 && state.software.length > 0) {
+    state.software.forEach((s) => {
+      const label = s.type === 'both' ? 'LPR + MMCG Bundle' : s.type.toUpperCase();
+      html += `<div class="breakdown-row">`;
+      html += `<span>${label} (${fmt.format(s.price)} × ${totalCameras} streams)</span>`;
+      html += `<span class="breakdown-value">${fmt.format(s.price * totalCameras)}/mo</span>`;
+      html += `</div>`;
+    });
+    html += `<div class="breakdown-row breakdown-subtotal">`;
+    html += `<span>Software Total</span>`;
+    html += `<span class="breakdown-value">${fmt.format(monthlySoftwareTotal)}/mo</span>`;
+    html += `</div>`;
+  } else if (totalCameras === 0) {
+    html += `<div class="breakdown-row muted"><span>No cameras configured</span></div>`;
+  } else {
+    html += `<div class="breakdown-row muted"><span>No software selected</span><span class="breakdown-value">$0/mo</span></div>`;
+  }
+  html += '</div>';
 
-  const softwareLine =
-    totalCameras > 0 && state.software.length > 0
-      ? `${state.software
-          .map((s) => `${s.type.toUpperCase()} (${fmt.format(s.price)}/stream/mo)`)
-          .join(", ")} → ${fmt.format(monthlySoftwareTotal)}/month total`
-      : totalCameras === 0
-      ? "No cameras configured"
-      : "No software selected ($0/month)";
-
-  container.innerHTML = `
-    <div>${parts.length ? parts.join('<br>') : "No hardware configured"}</div>
-    <div>Total hardware: ${fmt.format(hardwareTotal)}</div>
-    <div>Software: ${softwareLine}</div>
-  `;
+  container.innerHTML = html;
 }
 
 function updateCostComparison() {
@@ -1001,50 +1026,36 @@ function updateCostComparison() {
 
   const currentTotal = state.currentUpfront + currentMonthlyNormalized * state.timeframe;
 
+  let html = '';
+  
   if (isScenarioC()) {
     // OPTION C — new deployment; no existing-cost comparison
-    el.innerHTML = `
-      <div><strong>Sighthound deployment</strong> <br>Hardware: ${fmt.format(hardwareTotal)}<br>Monthly Software (${state.timeframe} mo): ${fmt.format(
-        monthlySoftwareTotal * state.timeframe
-      )}<br><br> <b>Total estimated deployment cost:</b> ${fmt.format(sighthoundTotal)}</div>
-    `;
+    html += '<div class="comparison-column">';
+    html += '<div class="comparison-title">Sighthound Deployment</div>';
+    html += `<div class="breakdown-row"><span>Hardware (one-time)</span><span class="breakdown-value">${fmt.format(hardwareTotal)}</span></div>`;
+    html += `<div class="breakdown-row"><span>Software (${state.timeframe} mo)</span><span class="breakdown-value">${fmt.format(monthlySoftwareTotal * state.timeframe)}</span></div>`;
+    html += `<div class="breakdown-row breakdown-total"><span>Total</span><span class="breakdown-value">${fmt.format(sighthoundTotal)}</span></div>`;
+    html += '</div>';
   } else {
-    el.innerHTML = `
-      <div><strong>Current Setup</strong> <br>Upfront: ${fmt.format(state.currentUpfront)} <br>Monthly (${state.timeframe} mo): ${fmt.format(
-        currentMonthlyNormalized * state.timeframe
-      )}<br><br> <b>Total:</b> ${fmt.format(currentTotal)}</div>
-      <div><strong>Sighthound </strong> <br> Hardware: ${fmt.format(hardwareTotal)}<br>Monthly Software (${state.timeframe} mo): ${fmt.format(
-        monthlySoftwareTotal * state.timeframe
-      )}<br><br> <b>Total:</b> ${fmt.format(sighthoundTotal)}</div>
-    `;
+    // Side-by-side comparison for A/B
+    html += '<div class="comparison-column">';
+    html += '<div class="comparison-title">Current Setup</div>';
+    html += `<div class="breakdown-row"><span>Upfront</span><span class="breakdown-value">${fmt.format(state.currentUpfront)}</span></div>`;
+    html += `<div class="breakdown-row"><span>Software (${state.timeframe} mo)</span><span class="breakdown-value">${fmt.format(currentMonthlyNormalized * state.timeframe)}</span></div>`;
+    html += `<div class="breakdown-row breakdown-total"><span>Total</span><span class="breakdown-value">${fmt.format(currentTotal)}</span></div>`;
+    html += '</div>';
+    
+    html += '<div class="comparison-column">';
+    html += '<div class="comparison-title">Sighthound</div>';
+    html += `<div class="breakdown-row"><span>Hardware (one-time)</span><span class="breakdown-value">${fmt.format(hardwareTotal)}</span></div>`;
+    html += `<div class="breakdown-row"><span>Software (${state.timeframe} mo)</span><span class="breakdown-value">${fmt.format(monthlySoftwareTotal * state.timeframe)}</span></div>`;
+    html += `<div class="breakdown-row breakdown-total"><span>Total</span><span class="breakdown-value">${fmt.format(sighthoundTotal)}</span></div>`;
+    html += '</div>';
   }
+  
+  el.innerHTML = html;
 
   // Also surface a plain-text summary for the custom HubSpot popup form
-  const setupParts = [];
-  if (state.standardCameras > 0) {
-    setupParts.push(
-      `${state.standardCameras} Standard IP camera${
-        state.standardCameras === 1 ? "" : "s"
-      }`
-    );
-  }
-  if (state.smartCameras > 0) {
-    setupParts.push(
-      `${state.smartCameras} Sighthound Smart camera${
-        state.smartCameras === 1 ? "" : "s"
-      }`
-    );
-  }
-  if (state.computeNodes > 0) {
-    setupParts.push(
-      `${state.computeNodes} Compute node${
-        state.computeNodes === 1 ? "" : "s"
-      }`
-    );
-  }
-  const setupLine =
-    setupParts.length > 0 ? `Setup: ${setupParts.join(", " )}. ` : "";
-
   // Scenario-aware lead-in and context for the email summary
   let scenarioLead;
   if (isScenarioC()) {
@@ -1075,21 +1086,67 @@ function updateCostComparison() {
   const summaryLines = [
     scenarioLead,
     scenarioContext,
-    setupLine ? setupLine.trim() : "",
+    "",
+    "HARDWARE:",
   ];
 
+  // Hardware breakdown with unit pricing
+  if (state.standardCameras > 0) {
+    const unitPrice = fmt.format(PRICES.standardCamera);
+    summaryLines.push(
+      reuseStandard
+        ? `  Standard IP Cameras (${state.standardCameras}) - Existing`
+        : `  Standard IP Cameras (${unitPrice} × ${state.standardCameras}) - ${fmt.format(hardwareStandard)}`
+    );
+  }
+  if (state.smartCameras > 0) {
+    const unitPrice = fmt.format(PRICES.smartCamera);
+    summaryLines.push(
+      `  Smart Cameras (${unitPrice} × ${state.smartCameras}) - ${fmt.format(hardwareSmart)}`
+    );
+  }
+  if (state.computeNodes > 0) {
+    const unitPrice = fmt.format(PRICES.node);
+    summaryLines.push(
+      `  Compute Nodes (${unitPrice} × ${state.computeNodes}) - ${fmt.format(hardwareNodes)}`
+    );
+  }
+  summaryLines.push(`  Hardware Total: ${fmt.format(hardwareTotal)}`);
+  summaryLines.push("");
+  summaryLines.push("SOFTWARE (MONTHLY):");
+
+  // Software breakdown with unit pricing
+  if (totalCameras > 0 && state.software.length > 0) {
+    state.software.forEach((s) => {
+      const label = s.type === 'both' ? 'LPR + MMCG Bundle' : s.type.toUpperCase();
+      summaryLines.push(
+        `  ${label} (${fmt.format(s.price)} × ${totalCameras} streams) - ${fmt.format(s.price * totalCameras)}/mo`
+      );
+    });
+    summaryLines.push(`  Software Total: ${fmt.format(monthlySoftwareTotal)}/mo`);
+  } else if (totalCameras === 0) {
+    summaryLines.push("  No cameras configured");
+  } else {
+    summaryLines.push("  No software selected - $0/mo");
+  }
+  summaryLines.push("");
+
+  // Cost comparison
   if (!isScenarioC()) {
     summaryLines.push(
-      `Current setup — upfront ${fmt.format(state.currentUpfront)},`,
-      `Monthly ${fmt.format(currentMonthlyNormalized * state.timeframe)},`,
-      `Total ${fmt.format(currentTotal)}.`,
+      `CURRENT SETUP (${state.timeframe} months):`,
+      `  Upfront: ${fmt.format(state.currentUpfront)}`,
+      `  Software: ${fmt.format(currentMonthlyNormalized * state.timeframe)}`,
+      `  Total: ${fmt.format(currentTotal)}`,
+      ""
     );
   }
 
   summaryLines.push(
-    `Sighthound — hardware ${fmt.format(hardwareTotal)},`,
-    `Monthly Software ${fmt.format(monthlySoftwareTotal * state.timeframe)},`,
-    `Total ${fmt.format(sighthoundTotal)}.`,
+    `SIGHTHOUND (${state.timeframe} months):`,
+    `  Hardware: ${fmt.format(hardwareTotal)}`,
+    `  Software: ${fmt.format(monthlySoftwareTotal * state.timeframe)}`,
+    `  Total: ${fmt.format(sighthoundTotal)}`,
   );
 
   const summary = summaryLines.filter(Boolean).join("\n");
@@ -1432,49 +1489,48 @@ async function generatePDF() {
 
   // Card 2: Cost breakdown (mirrors on-screen calculator layout)
   const breakdownLines = [];
+  breakdownLines.push("HARDWARE");
 
-  // Hardware lines like the UI: per-component plus total
+  // Hardware lines with unit pricing
   if (state.standardCameras > 0) {
+    const unitPrice = fmt.format(PRICES.standardCamera);
     breakdownLines.push(
       reuseStandard
-        ? `${state.standardCameras} × Standard IP camera${
-            state.standardCameras > 1 ? "s" : ""
-          } (existing hardware, not included in Sighthound hardware cost)`
-        : `${state.standardCameras} × Standard IP camera${
-            state.standardCameras > 1 ? "s" : ""
-          } (${fmt.format(hardwareStandard)})`
+        ? `  Standard IP Cameras (${state.standardCameras}) - Existing`
+        : `  Standard IP Cameras (${unitPrice} × ${state.standardCameras}) - ${fmt.format(hardwareStandard)}`
     );
   }
   if (state.smartCameras > 0) {
+    const unitPrice = fmt.format(PRICES.smartCamera);
     breakdownLines.push(
-      `${state.smartCameras} × Sighthound Smart camera${
-        state.smartCameras > 1 ? "s" : ""
-      } (${fmt.format(hardwareSmart)})`
+      `  Smart Cameras (${unitPrice} × ${state.smartCameras}) - ${fmt.format(hardwareSmart)}`
     );
   }
   if (state.computeNodes > 0) {
+    const unitPrice = fmt.format(PRICES.node);
     breakdownLines.push(
-      `${state.computeNodes} × Compute node${
-        state.computeNodes > 1 ? "s" : ""
-      } (${state.computeNodes * CAMERAS_PER_NODE} camera capacity) (${fmt.format(
-        hardwareNodes
-      )})`
+      `  Compute Nodes (${unitPrice} × ${state.computeNodes}) - ${fmt.format(hardwareNodes)}`
     );
   }
 
-  breakdownLines.push(`Total hardware: ${fmt.format(hardwareTotal)}`);
+  breakdownLines.push(`  Hardware Total: ${fmt.format(hardwareTotal)}`);
+  breakdownLines.push("");
+  breakdownLines.push("SOFTWARE (MONTHLY)");
 
-  // Software line: selected analytics and monthly total
-  const softwareLinePdf =
-    totalCameras > 0 && state.software.length > 0
-      ? `Software: ${state.software
-          .map((s) => `${s.type.toUpperCase()} (${fmt.format(s.price)}/stream/mo)`)
-          .join(", ")} -> ${fmt.format(monthlySoftwareTotal)}/month total`
-      : totalCameras === 0
-      ? "Software: No cameras configured"
-      : "Software: No software selected ($0/month)";
-
-  breakdownLines.push(softwareLinePdf);
+  // Software lines with unit pricing
+  if (totalCameras > 0 && state.software.length > 0) {
+    state.software.forEach((s) => {
+      const label = s.type === 'both' ? 'LPR + MMCG Bundle' : s.type.toUpperCase();
+      breakdownLines.push(
+        `  ${label} (${fmt.format(s.price)} × ${totalCameras} streams) - ${fmt.format(s.price * totalCameras)}/mo`
+      );
+    });
+    breakdownLines.push(`  Software Total: ${fmt.format(monthlySoftwareTotal)}/mo`);
+  } else if (totalCameras === 0) {
+    breakdownLines.push("  No cameras configured");
+  } else {
+    breakdownLines.push("  No software selected - $0/mo");
+  }
   breakdownLines.push("");
 
   // Totals for the selected timeframe (scenario-aware)

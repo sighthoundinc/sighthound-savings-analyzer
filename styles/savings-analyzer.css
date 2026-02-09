@@ -1932,6 +1932,79 @@ label {
   grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
+
+/* Simplified breakdown styles */
+.breakdown-section {
+  margin-bottom: 24px;
+}
+.breakdown-section:last-child {
+  margin-bottom: 0;
+}
+.breakdown-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 15px;
+  color: #374151;
+}
+.breakdown-row.muted {
+  color: #9ca3af;
+}
+.breakdown-value {
+  font-weight: 600;
+  color: #1a1d38;
+}
+.breakdown-value.muted {
+  font-weight: 500;
+  color: #9ca3af;
+  font-style: italic;
+}
+.breakdown-row.breakdown-subtotal {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  font-weight: 600;
+}
+.breakdown-row.breakdown-subtotal .breakdown-value {
+  font-size: 16px;
+}
+.breakdown-row.breakdown-total {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 2px solid #1a1d38;
+  font-weight: 700;
+}
+.breakdown-row.breakdown-total .breakdown-value {
+  font-size: 18px;
+  color: #4f60dc;
+}
+
+/* Comparison columns */
+.comparison-column {
+  background: #f8f9fb;
+  border-radius: 12px;
+  padding: 20px;
+}
+.comparison-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1d38;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
 .savings-card[data-astro-cid-j7pv25f6] {
   background: linear-gradient(135deg, #16a34a, #15803d);
   border-radius: 16px;
