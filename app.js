@@ -11,8 +11,8 @@ const state = {
   scenarioAOption: "recommended",
   standardCameras: 1,
   smartCameras: 0,
-  computeNodes: 1,
-  autoAddNodes: true,
+  computeNodes: 0,
+  autoAddNodes: false,
   software: [],
   currentMonthly: 0,
   currentUpfront: 0,
@@ -394,10 +394,13 @@ function attachEventHandlers() {
         state.smartCameras = 0;
         const smartInputEl = document.getElementById("smartCameras");
         if (smartInputEl) smartInputEl.value = "0";
-        // Turn auto-add nodes ON and let capacity logic suggest nodes
-        state.autoAddNodes = true;
+        // Keep auto-add nodes OFF and nodes at 0 by default
+        state.autoAddNodes = false;
+        state.computeNodes = 0;
         const autoToggle = document.getElementById("autoAddNodes");
-        if (autoToggle) autoToggle.checked = true;
+        if (autoToggle) autoToggle.checked = false;
+        const computeNodesInput = document.getElementById("computeNodes");
+        if (computeNodesInput) computeNodesInput.value = "0";
       }
 
       selectOptionCard(btn);
@@ -808,6 +811,17 @@ function updateNodeStatus(standardCameras, suggestedNodes) {
 
   const capacity = state.computeNodes * CAMERAS_PER_NODE;
   const requiredNodes = suggestedNodes;
+  
+  // Calculate potential savings by comparing nodes vs smart cameras
+  const fmt = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+  const nodesCost = state.computeNodes * PRICES.node;
+  const smartCamerasCost = capacity * PRICES.smartCamera;
+  const savings = smartCamerasCost - nodesCost;
 
   if (standardCameras === 0) {
     nodeStatus.className = "node-status neutral";
@@ -827,10 +841,11 @@ function updateNodeStatus(standardCameras, suggestedNodes) {
       }, but selected nodes only support ${capacity} stream${capacity === 1 ? "" : "s"} for ${standardCameras} Standard IP camera${standardCameras === 1 ? "" : "s"}.`;
   } else {
     nodeStatus.className = "node-status success";
+    const savingsText = savings > 0 ? ` This saves you ${fmt.format(savings)} compared to using ${capacity} Smart camera${capacity === 1 ? "" : "s"}.` : "";
     nodeStatus.textContent =
       `Each compute node supports up to 4 Standard IP camera streams. Your configuration requires ${requiredNodes} node${
         requiredNodes === 1 ? "" : "s"
-      }. Selected nodes can support up to ${capacity} stream${capacity === 1 ? "" : "s"}.`;
+      }. Selected nodes can support up to ${capacity} stream${capacity === 1 ? "" : "s"}.${savingsText}`;
   }
 }
 
@@ -844,6 +859,16 @@ function goToStep(step, logicalStepOverride) {
   const stepId = `step${step}`;
   const stepElement = document.getElementById(stepId);
   if (stepElement) stepElement.classList.add("active");
+
+  // Show/hide step instruction based on current step
+  const stepInstruction = document.getElementById("step1Instruction");
+  if (stepInstruction) {
+    if (step === 1 || step === "1") {
+      stepInstruction.classList.remove("hidden");
+    } else {
+      stepInstruction.classList.add("hidden");
+    }
+  }
 
   // Progress bar only tracks 1–5 (logical steps)
   const totalSteps = 5;

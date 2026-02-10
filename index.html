@@ -34,13 +34,15 @@
           </ul>
 
           <div class="hero-actions" data-astro-cid-j7pv25f6>
-            <button
+            <a
+              href="https://landing.sighthound.com/alpr-vehicle-insights-api-demo"
               class="btn btn-primary"
-              id="startAnalysis"
+              target="_blank"
+              rel="noopener noreferrer"
               data-astro-cid-j7pv25f6
             >
-              Start my savings analysis
-            </button>
+              Watch ALPR+ Demo
+            </a>
 
             <a
               href="https://www.sighthound.com/contact-us?utm_campaign=36330515-Site%20Navigation&utm_source=website&utm_medium=navbar&utm_content=contact_us"
@@ -59,6 +61,11 @@
       <section class="calculator" id="calculator" data-astro-cid-j7pv25f6>
         <div class="container" data-astro-cid-j7pv25f6>
           <div class="calculator-card" data-astro-cid-j7pv25f6>
+            <!-- Step 1 Instruction (only visible on step 1) -->
+            <div class="step-instruction" id="step1Instruction" data-astro-cid-j7pv25f6>
+              Select a scenario below to begin your savings analysis.
+            </div>
+
             <!-- Progress Indicator -->
             <div class="progress-bar" data-astro-cid-j7pv25f6>
               <div
@@ -316,6 +323,9 @@
                       <div class="hardware-price" data-astro-cid-j7pv25f6>
                         $250 each
                       </div>
+                      <div class="hardware-description" data-astro-cid-j7pv25f6>
+                        Add a compute node to turn up to 4 standard IP cameras into AI-powered ALPR+ cameras using a single edge device. No cloud or infrastructure changes required.
+                      </div>
                       <div id="nodeRequiredWarning" class="node-required-warning" style="display: none;" data-astro-cid-j7pv25f6>
                         A node purchase would be needed to run analytics
                       </div>
@@ -419,22 +429,6 @@
                   </span>
                 </div>
 
-                <!-- Auto-Add Nodes Toggle -->
-                <div class="auto-add-section" data-astro-cid-j7pv25f6>
-                  <label class="toggle-label" data-astro-cid-j7pv25f6>
-                    <input
-                      type="checkbox"
-                      id="autoAddNodes"
-                      checked
-                      data-astro-cid-j7pv25f6
-                    />
-                    <span class="toggle-switch" data-astro-cid-j7pv25f6></span>
-                    <span class="toggle-text" data-astro-cid-j7pv25f6>
-                      Auto-add Compute Nodes based on camera count
-                    </span>
-                  </label>
-                </div>
-
                 <!-- Compute Nodes -->
                 <div class="hardware-item" data-astro-cid-j7pv25f6>
                   <div class="hardware-header" data-astro-cid-j7pv25f6>
@@ -461,7 +455,7 @@
                         type="number"
                         id="computeNodes"
                         class="number-input-small"
-                        value="2"
+                        value="0"
                         min="0"
                         max="999"
                         data-astro-cid-j7pv25f6
@@ -479,6 +473,21 @@
                   </div>
 
                   <div class="node-status" id="nodeStatus" data-astro-cid-j7pv25f6></div>
+                </div>
+
+                <!-- Auto-Add Nodes Toggle -->
+                <div class="auto-add-section" data-astro-cid-j7pv25f6>
+                  <label class="toggle-label" data-astro-cid-j7pv25f6>
+                    <input
+                      type="checkbox"
+                      id="autoAddNodes"
+                      data-astro-cid-j7pv25f6
+                    />
+                    <span class="toggle-switch" data-astro-cid-j7pv25f6></span>
+                    <span class="toggle-text" data-astro-cid-j7pv25f6>
+                      Auto-add Compute Nodes based on camera count
+                    </span>
+                  </label>
                 </div>
               </div>
 
