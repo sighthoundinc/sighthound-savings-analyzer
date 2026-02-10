@@ -1420,6 +1420,21 @@ label {
   padding: 48px;
   box-shadow: 0 4px 24px #0000000f;
 }
+.step-instruction[data-astro-cid-j7pv25f6] {
+  background: #f0f2ff;
+  border-left: 4px solid #4f60dc;
+  color: #1a1d38;
+  padding: 16px 20px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.step-instruction[data-astro-cid-j7pv25f6].hidden {
+  display: none;
+}
 .progress-bar[data-astro-cid-j7pv25f6] {
   height: 4px;
   background: #e5e7eb;
@@ -1628,6 +1643,13 @@ label {
 .hardware-price[data-astro-cid-j7pv25f6] {
   font-size: 14px;
   color: #6b7280;
+}
+.hardware-description[data-astro-cid-j7pv25f6] {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+  max-width: 500px;
 }
 .hardware-controls[data-astro-cid-j7pv25f6] {
   display: flex;
