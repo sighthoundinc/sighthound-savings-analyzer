@@ -627,11 +627,15 @@ function attachEventHandlers() {
 
   onClick("emailModalClose", () => {
     const modal = document.getElementById("emailModal");
+    const modalHeader = document.getElementById("emailModalHeader");
     const formWrapper = document.querySelector(".email-modal-form-wrapper");
     const thankYou = document.getElementById("emailThankYou");
     if (thankYou) {
       thankYou.classList.remove("active");
       thankYou.setAttribute("aria-hidden", "true");
+    }
+    if (modalHeader) {
+      modalHeader.style.display = "";
     }
     if (formWrapper) {
       formWrapper.style.display = "";
@@ -645,11 +649,15 @@ function attachEventHandlers() {
   const emailModal = document.getElementById("emailModal");
   emailModal?.addEventListener("click", (e) => {
     if (e.target === emailModal) {
+      const modalHeader = document.getElementById("emailModalHeader");
       const formWrapper = document.querySelector(".email-modal-form-wrapper");
       const thankYou = document.getElementById("emailThankYou");
       if (thankYou) {
         thankYou.classList.remove("active");
         thankYou.setAttribute("aria-hidden", "true");
+      }
+      if (modalHeader) {
+        modalHeader.style.display = "";
       }
       if (formWrapper) {
         formWrapper.style.display = "";
@@ -705,6 +713,10 @@ function attachEventHandlers() {
         const thankYou = document.getElementById("emailThankYou");
 
         // Swap to thank-you state instead of alert
+        const modalHeader = document.getElementById("emailModalHeader");
+        if (modalHeader) {
+          modalHeader.style.display = "none";
+        }
         if (formWrapper) {
           formWrapper.style.display = "none";
         }
@@ -730,11 +742,15 @@ function attachEventHandlers() {
   // Thank-you close button inside modal
   onClick("emailThankYouClose", () => {
     const modal = document.getElementById("emailModal");
+    const modalHeader = document.getElementById("emailModalHeader");
     const formWrapper = document.querySelector(".email-modal-form-wrapper");
     const thankYou = document.getElementById("emailThankYou");
     if (thankYou) {
       thankYou.classList.remove("active");
       thankYou.setAttribute("aria-hidden", "true");
+    }
+    if (modalHeader) {
+      modalHeader.style.display = "";
     }
     if (formWrapper) {
       formWrapper.style.display = "";
