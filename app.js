@@ -1663,5 +1663,32 @@ async function generatePDF() {
     [79, 70, 229]
   );
 
-  doc.save("savings-analysis.pdf");
+  // Use blob URL approach for better iframe and mobile compatibility
+  const pdfBlob = doc.output('blob');
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  
+  // Check if we're in an iframe or on iOS (iOS doesn't support download attribute)
+  const inIframe = window.self !== window.top;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
+  if (inIframe || isIOS) {
+    // In iframe or iOS: open in new window/tab
+    // iOS will show PDF in viewer where user can share/save
+    const newWindow = window.open(blobUrl, '_blank');
+    if (!newWindow) {
+      // Popup blocked - fall back to navigating current window
+      window.location.href = blobUrl;
+    }
+  } else {
+    // Standard download approach for desktop browsers
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = 'savings-analysis.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+  
+  // Clean up blob URL after a delay
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 }
