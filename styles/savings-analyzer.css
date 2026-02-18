@@ -1242,7 +1242,7 @@ label {
 }
 .analyzer-page[data-astro-cid-j7pv25f6] {
   background: #f8f9fb;
-  min-height: 100vh;
+  /*min-height: 100vh;*/
 }
 .container[data-astro-cid-j7pv25f6] {
   max-width: 900px;
