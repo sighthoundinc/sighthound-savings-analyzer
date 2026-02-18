@@ -56,6 +56,26 @@ window.addEventListener("load", init);
 // If script executes after load, run immediately
 if (document.readyState !== "loading") setTimeout(init, 0);
 
+// ---------- IFRAME HEIGHT COMMUNICATION ----------
+// Send height updates to parent frame so iframe can auto-resize
+function notifyParentOfHeight() {
+  if (window.parent !== window) {
+    try {
+      const height = document.documentElement.scrollHeight;
+      window.parent.postMessage({ height }, "*");
+    } catch (e) {
+      // Silently fail if cross-origin restrictions prevent postMessage
+    }
+  }
+}
+
+// Notify parent on load and whenever content size changes
+window.addEventListener("load", notifyParentOfHeight);
+if (typeof ResizeObserver !== "undefined") {
+  const resizeObserver = new ResizeObserver(notifyParentOfHeight);
+  resizeObserver.observe(document.body);
+}
+
 // ---------- HELPERS ----------
 function onClick(id, handler) {
   const el = document.getElementById(id);
