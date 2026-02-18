@@ -25,6 +25,9 @@ html {
 body {
   margin: 0;
 }
+body.__DARK_MODE_CLASS__ {
+    background-color: #f8f9fb;
+}
 nav,
 section {
   display: block;
