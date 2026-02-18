@@ -1663,31 +1663,60 @@ async function generatePDF() {
     [79, 70, 229]
   );
 
-  // Use blob URL approach for better iframe and mobile compatibility
+  // Generate PDF blob and attempt download with multiple fallback strategies
   const pdfBlob = doc.output('blob');
-  const blobUrl = URL.createObjectURL(pdfBlob);
+  const fileName = 'savings-analysis.pdf';
   
-  // Check if we're in an iframe or on iOS (iOS doesn't support download attribute)
+  // Check environment
   const inIframe = window.self !== window.top;
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   
-  if (inIframe || isIOS) {
-    // In iframe or iOS: open in new window/tab
-    // iOS will show PDF in viewer where user can share/save
-    const newWindow = window.open(blobUrl, '_blank');
-    if (!newWindow) {
-      // Popup blocked - fall back to navigating current window
-      window.location.href = blobUrl;
+  // Strategy 1: Use Web Share API (best for iOS)
+  if (navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], fileName, { type: 'application/pdf' })] })) {
+    try {
+      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      await navigator.share({
+        files: [file],
+        title: 'Sighthound Savings Analysis',
+      });
+      return; // Success - exit early
+    } catch (err) {
+      // User cancelled or share failed - continue to fallback
+      if (err.name !== 'AbortError') {
+        console.warn('[PDF] Share failed, trying fallback:', err);
+      }
     }
-  } else {
-    // Standard download approach for desktop browsers
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = 'savings-analysis.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   }
+  
+  // Strategy 2: For iOS Safari without share support, use data URL in new tab
+  if (isIOS || (isSafari && inIframe)) {
+    const dataUrl = doc.output('dataurlstring');
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.write(
+        `<html><head><title>${fileName}</title></head>` +
+        `<body style="margin:0;padding:0;">` +
+        `<embed width="100%" height="100%" src="${dataUrl}" type="application/pdf">` +
+        `</body></html>`
+      );
+      newWindow.document.close();
+      return;
+    }
+    // If popup blocked, try direct navigation
+    window.location.href = dataUrl;
+    return;
+  }
+  
+  // Strategy 3: Standard blob URL download (desktop browsers)
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = fileName;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
   
   // Clean up blob URL after a delay
   setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
