@@ -642,6 +642,11 @@ function attachEventHandlers() {
     if (modal) {
       modal.classList.add("active");
       modal.setAttribute("aria-hidden", "false");
+      
+      // Scroll modal into view for iframe context
+      setTimeout(() => {
+        modal.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
     }
   });
 

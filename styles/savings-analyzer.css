@@ -2047,13 +2047,17 @@ label {
 
 /* Email modal overlay + content */
 .email-modal-overlay {
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 100vh;
   background: rgba(15, 23, 42, 0.6);
   display: none;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 40px 20px;
 }
 
 .email-modal-overlay.active {
