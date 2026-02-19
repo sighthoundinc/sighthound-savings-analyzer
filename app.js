@@ -1319,7 +1319,6 @@ async function generatePDF() {
     return new Promise((resolve, reject) => {
       const existing = findJsPDF();
       if (existing) return resolve(existing);
-
       const url = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
       const s = document.createElement("script");
       s.src = url;
@@ -1334,7 +1333,6 @@ async function generatePDF() {
     });
   }
 
-  // Helper: load logo image and convert to data URL for jsPDF
   function loadLogoAsDataUrl(src) {
     return new Promise((resolve, reject) => {
       try {
@@ -1346,322 +1344,328 @@ async function generatePDF() {
             canvas.width = img.naturalWidth || img.width;
             canvas.height = img.naturalHeight || img.height;
             const ctx = canvas.getContext("2d");
-            if (!ctx) {
-              return reject(new Error("canvas context not available"));
-            }
+            if (!ctx) return reject(new Error("canvas context not available"));
             ctx.drawImage(img, 0, 0);
-            const dataUrl = canvas.toDataURL("image/png");
-            resolve(dataUrl);
-          } catch (err) {
-            reject(err);
-          }
+            resolve(canvas.toDataURL("image/png"));
+          } catch (err) { reject(err); }
         };
-        img.onerror = (err) => reject(err || new Error("Failed to load logo image"));
+        img.onerror = (err) => reject(err || new Error("Failed to load logo"));
         img.src = src;
-      } catch (e) {
-        reject(e);
-      }
+      } catch (e) { reject(e); }
     });
   }
 
   const jsPDFCtor = findJsPDF() || await loadJsPDF();
-  const jsPDF = jsPDFCtor;
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-
+  const doc = new jsPDFCtor({ unit: "mm", format: "letter" });
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 14;
   const contentWidth = pageWidth - margin * 2;
+  const halfWidth = (contentWidth - 6) / 2;
 
-  // Try to place Sighthound logo in the top-right corner of the page
-  // This is best-effort only; if the image can't be loaded we silently skip it.
-  try {
-    const logoDataUrl = await loadLogoAsDataUrl("./assets/sighthound-logo-black.png");
-    const logoWidth = 40; // mm
-    const logoHeight = 10; // mm, approximate aspect ratio
-    const logoX = pageWidth - margin - logoWidth;
-    const logoY = margin - 6; // slightly above title
-    doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoWidth, logoHeight);
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn("[savings] PDF logo not added", e);
-  }
+  let y = margin;
 
-  let y = 20;
+  const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
-  const fmt = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-
-  // Recompute numeric breakdowns (same logic used in UI)
+  // Compute values
   const totalCameras = state.standardCameras + state.smartCameras;
-  const monthlySoftwareTotal =
-    state.software.reduce((sum, s) => sum + s.price, 0) * totalCameras;
+  const monthlySoftwareTotal = state.software.reduce((sum, s) => sum + s.price, 0) * totalCameras;
   const reuseStandard = isScenarioB();
-  const rawHardwareStandard = state.standardCameras * PRICES.standardCamera;
-  const hardwareStandard = reuseStandard ? 0 : rawHardwareStandard;
+  const hardwareStandard = reuseStandard ? 0 : state.standardCameras * PRICES.standardCamera;
   const hardwareSmart = state.smartCameras * PRICES.smartCamera;
   const hardwareNodes = state.computeNodes * PRICES.node;
   const hardwareTotal = hardwareStandard + hardwareSmart + hardwareNodes;
   const sighthoundTotal = hardwareTotal + monthlySoftwareTotal * state.timeframe;
-  const currentMonthlyNormalized =
-    state.frequency === "annual" ? state.currentMonthly / 12 : state.currentMonthly;
+  const currentMonthlyNormalized = state.frequency === "annual" ? state.currentMonthly / 12 : state.currentMonthly;
   const currentTotal = state.currentUpfront + currentMonthlyNormalized * state.timeframe;
   const savings = currentTotal - sighthoundTotal;
   const savingsPerMonth = savings / (state.timeframe || 1);
 
-  // Helpers for card-style layout
-  function drawCard(title, lines, accentColor) {
-    const cardPadding = 4;
-    const innerWidth = contentWidth - cardPadding * 2;
+  // Colors matching HubSpot style
+  const navy = [26, 32, 44];
+  const muted = [100, 116, 139];
+  const blurple = [79, 96, 220];
+  const green = [22, 163, 74];
+  const red = [220, 38, 38];
+  const lightBg = [248, 250, 252];
+  const border = [226, 232, 240];
+  const white = [255, 255, 255];
 
-    const wrappedLines = lines.flatMap((line) =>
-      doc.splitTextToSize(line, innerWidth)
-    );
+  // Helper: draw rounded rect
+  const roundedRect = (x, ry, w, h, r, fillColor, strokeColor) => {
+    if (fillColor) doc.setFillColor(...fillColor);
+    if (strokeColor) doc.setDrawColor(...strokeColor);
+    doc.roundedRect(x, ry, w, h, r, r, fillColor && strokeColor ? "FD" : fillColor ? "F" : "S");
+  };
 
-    const lineHeight = 4.2;
-    const minHeight = 16;
-    const contentHeight = wrappedLines.length * lineHeight + 6;
-    const cardHeight = Math.max(minHeight, contentHeight + cardPadding * 2);
-    const x = margin;
-    const top = y;
+  // ===== HEADER BAR =====
+  roundedRect(margin, y, contentWidth, 20, 3, lightBg, border);
 
-    // Card background & border
-    doc.setDrawColor(230, 232, 240);
-    doc.setFillColor(248, 249, 252);
-    doc.roundedRect(x, top, contentWidth, cardHeight, 2, 2, "FD");
+  // Logo on left
+  try {
+    const logoDataUrl = await loadLogoAsDataUrl("./assets/sighthound-logo-black.png");
+    doc.addImage(logoDataUrl, "PNG", margin + 4, y + 5, 32, 8);
+  } catch (e) { /* skip */ }
 
-    // Accent bar on the left
-    const [r, g, b] = accentColor;
-    doc.setFillColor(r, g, b);
-    doc.rect(x, top, 1.8, cardHeight, "F");
+  // Title & subtitle in center-left
+  let pdfTitle = "Hardware Savings Estimate";
+  if (isScenarioA()) pdfTitle = "Hardware Replacement Estimate";
+  if (isScenarioB()) pdfTitle = "Hardware Upgrade Estimate";
+  if (isScenarioC()) pdfTitle = "New Deployment Estimate";
 
-    // Title
-    doc.setTextColor(17, 24, 39);
-    doc.setFontSize(12);
-    doc.text(title, x + cardPadding + 2, top + 6);
+  doc.setFontSize(12);
+  doc.setTextColor(...navy);
+  doc.setFont(undefined, "bold");
+  doc.text(pdfTitle, margin + 40, y + 8);
 
-    // Body
+  let subtitle = `${totalCameras} camera${totalCameras !== 1 ? "s" : ""} • ${state.timeframe} month analysis`;
+  doc.setFontSize(9);
+  doc.setTextColor(...muted);
+  doc.setFont(undefined, "normal");
+  doc.text(subtitle, margin + 40, y + 14);
+
+  // Date & pill on right
+  const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+  doc.setFontSize(8);
+  doc.text(`Generated: ${dateStr}`, pageWidth - margin - 4, y + 7, { align: "right" });
+
+  // Scenario pill
+  let pillText = "Estimate";
+  if (isScenarioA()) pillText = "Replacement";
+  if (isScenarioB()) pillText = "Upgrade";
+  if (isScenarioC()) pillText = "New Deploy";
+  const pillW = doc.getTextWidth(pillText) + 8;
+  roundedRect(pageWidth - margin - pillW - 2, y + 11, pillW, 6, 2, [235, 238, 255], null);
+  doc.setFontSize(7);
+  doc.setTextColor(...blurple);
+  doc.setFont(undefined, "bold");
+  doc.text(pillText, pageWidth - margin - pillW / 2 - 2, y + 15, { align: "center" });
+
+  y += 24;
+
+  // ===== SUMMARY KPI ROW =====
+  const kpis = [
+    { label: "ANALYSIS", value: `${state.timeframe} mo` },
+    { label: "HARDWARE", value: fmt.format(hardwareTotal), highlight: true },
+    { label: "SOFTWARE/MO", value: fmt.format(monthlySoftwareTotal) },
+    { label: "SIGHTHOUND", value: fmt.format(sighthoundTotal), highlight: true }
+  ];
+  if (!isScenarioC()) {
+    kpis.push({ label: "CURRENT", value: fmt.format(currentTotal) });
+    if (savings !== 0) {
+      kpis.push({
+        label: savings > 0 ? "SAVINGS" : "ADD'L COST",
+        value: fmt.format(Math.abs(savings)),
+        isGreen: savings > 0,
+        isRed: savings < 0
+      });
+    }
+  }
+
+  const kpiW = (contentWidth - (kpis.length - 1) * 3) / kpis.length;
+  roundedRect(margin, y, contentWidth, 24, 3, white, border);
+  doc.setFontSize(7);
+  doc.setTextColor(...navy);
+  doc.setFont(undefined, "bold");
+  doc.text("Summary", margin + 4, y + 5);
+
+  let kpiX = margin + 3;
+  kpis.forEach((kpi) => {
+    const bg = kpi.highlight ? [245, 247, 255] : kpi.isGreen ? [240, 253, 244] : kpi.isRed ? [254, 242, 242] : white;
+    const borderCol = kpi.highlight ? blurple : kpi.isGreen ? green : kpi.isRed ? red : border;
+    roundedRect(kpiX, y + 8, kpiW, 13, 2, bg, borderCol);
+
+    doc.setFontSize(6);
+    doc.setTextColor(...muted);
+    doc.setFont(undefined, "bold");
+    doc.text(kpi.label, kpiX + 3, y + 12);
+
     doc.setFontSize(10);
-    doc.setTextColor(75, 85, 99);
-    let textY = top + 11;
-    wrappedLines.forEach((line) => {
-      doc.text(line, x + cardPadding + 2, textY);
-      textY += lineHeight;
-    });
+    doc.setTextColor(...(kpi.isGreen ? green : kpi.isRed ? red : navy));
+    doc.text(kpi.value, kpiX + 3, y + 18);
 
-    y = top + cardHeight + 5;
-  }
+    kpiX += kpiW + 3;
+  });
 
-  // Title & subtitle (scenario-aware, respecting language guardrails)
-  doc.setFontSize(18);
-  doc.setTextColor(17, 24, 39);
-  let pdfTitle = "Sighthound Savings Summary";
-  if (isScenarioB()) pdfTitle = "Sighthound Upgrade Summary";
-  if (isScenarioC()) pdfTitle = "Sighthound Deployment Estimate";
-  doc.text(pdfTitle, margin, y);
-  y += 8;
+  y += 28;
 
-  doc.setFontSize(11);
-  doc.setTextColor(107, 114, 128);
-  const subtitleParts = [];
-  if (totalCameras > 0) {
-    subtitleParts.push(
-      `${totalCameras} camera${totalCameras === 1 ? "" : "s"}`
-    );
-  }
-  subtitleParts.push(`${state.timeframe} month analysis`);
-  doc.text(subtitleParts.join(" • "), margin, y);
-  y += 6;
-
-  // Explicit scenario line for quick scanning in the PDF
-  let scenarioLabel = "Custom scenario";
-  if (isScenarioA()) {
-    if (state.scenarioAOption === "smart") {
-      scenarioLabel = "Replace with Sighthound Smart Cameras (built-in analytics)";
-    } else {
-      scenarioLabel = "Replace with Standard IP Cameras + Compute Nodes";
-    }
-  } else if (isScenarioB()) {
-    scenarioLabel = "Reuse existing Standard IP cameras (upgrade)";
-  } else if (isScenarioC()) {
-    scenarioLabel = "New deployment (no existing cameras)";
-  }
-  doc.text(`Scenario: ${scenarioLabel}`, margin, y);
-  y += 6;
-
-  // Card 1: Primary framing (scenario-aware)
-  if (isScenarioA()) {
-    if (savings > 0) {
-      drawCard(
-        "Estimated savings",
-        [
-          `Estimated savings over ${state.timeframe} months: ${fmt.format(savings)}.`,
-          `Average monthly impact: ${fmt.format(savingsPerMonth)} compared to today.`,
-        ],
-        [34, 197, 94] // bright green accent
-      );
-    } else if (savings < 0) {
-      const pdfSetupDesc = state.scenarioAOption === "smart"
-        ? "Sighthound Smart Cameras with built-in analytics"
-        : "Standard IP Cameras with Compute Nodes";
-      drawCard(
-        "Estimated replacement cost",
-        [
-          `Additional investment over ${state.timeframe} months: ${fmt.format(Math.abs(savings))}.`,
-          `Reflects replacing your current system with ${pdfSetupDesc}.`,
-        ],
-        [239, 68, 68] // red accent
-      );
-    } else {
-      drawCard(
-        "Neutral replacement comparison",
-        [
-          "Your projected Sighthound replacement costs are roughly in line with what you pay today.",
-          "Adjust camera counts, analytics selection, or timeframe to explore different scenarios.",
-        ],
-        [107, 114, 128] // neutral gray accent
-      );
-    }
-  } else if (isScenarioB()) {
-    drawCard(
-      "Upgrade cost overview",
-      [
-        `Estimated upgrade cost over ${state.timeframe} months: ${fmt.format(sighthoundTotal)}.`,
-        "Represents adding centralized analytics on top of your existing Standard IP cameras.",
-      ],
-      [16, 185, 129]
-    );
-  } else if (isScenarioC()) {
-    drawCard(
-      "Deployment cost overview",
-      [
-        `Estimated deployment cost over ${state.timeframe} months: ${fmt.format(sighthoundTotal)}.`,
-        "All hardware and software are treated as net-new in this scenario.",
-      ],
-      [79, 70, 229]
-    );
-  } else {
-    drawCard(
-      "Cost overview",
-      [
-        `Estimated cost over ${state.timeframe} months: ${fmt.format(sighthoundTotal)}.`,
-      ],
-      [107, 114, 128]
-    );
-  }
-
-  // Card 2: Cost breakdown (mirrors on-screen calculator layout)
-  const breakdownLines = [];
-  breakdownLines.push("HARDWARE");
-
-  // Hardware lines with unit pricing
+  // ===== HARDWARE & SOFTWARE SIDE-BY-SIDE =====
+  const hwLines = [];
   if (state.standardCameras > 0) {
-    const unitPrice = fmt.format(PRICES.standardCamera);
-    breakdownLines.push(
-      reuseStandard
-        ? `  Standard IP Cameras (${state.standardCameras}) - Existing`
-        : `  Standard IP Cameras (${unitPrice} × ${state.standardCameras}) - ${fmt.format(hardwareStandard)}`
-    );
+    hwLines.push(reuseStandard
+      ? `Standard IP (${state.standardCameras}) — Existing`
+      : `Standard IP (${fmt.format(PRICES.standardCamera)} × ${state.standardCameras}) — ${fmt.format(hardwareStandard)}`);
   }
   if (state.smartCameras > 0) {
-    const unitPrice = fmt.format(PRICES.smartCamera);
-    breakdownLines.push(
-      `  Smart Cameras (${unitPrice} × ${state.smartCameras}) - ${fmt.format(hardwareSmart)}`
-    );
+    hwLines.push(`Smart Cameras (${fmt.format(PRICES.smartCamera)} × ${state.smartCameras}) — ${fmt.format(hardwareSmart)}`);
   }
   if (state.computeNodes > 0) {
-    const unitPrice = fmt.format(PRICES.node);
-    breakdownLines.push(
-      `  Compute Nodes (${unitPrice} × ${state.computeNodes}) - ${fmt.format(hardwareNodes)}`
-    );
+    hwLines.push(`Compute Nodes (${fmt.format(PRICES.node)} × ${state.computeNodes}) — ${fmt.format(hardwareNodes)}`);
   }
+  hwLines.push(`Total: ${fmt.format(hardwareTotal)}`);
 
-  breakdownLines.push(`  Hardware Total: ${fmt.format(hardwareTotal)}`);
-  breakdownLines.push("");
-  breakdownLines.push("SOFTWARE (MONTHLY)");
-
-  // Software lines with unit pricing
+  const swLines = [];
   if (totalCameras > 0 && state.software.length > 0) {
     state.software.forEach((s) => {
-      const label = s.type === 'both' ? 'LPR + MMCG Bundle' : s.type.toUpperCase();
-      breakdownLines.push(
-        `  ${label} (${fmt.format(s.price)} × ${totalCameras} streams) - ${fmt.format(s.price * totalCameras)}/mo`
-      );
+      const label = s.type === 'both' ? 'LPR + MMCG' : s.type.toUpperCase();
+      swLines.push(`${label} (${fmt.format(s.price)} × ${totalCameras}) — ${fmt.format(s.price * totalCameras)}/mo`);
     });
-    breakdownLines.push(`  Software Total: ${fmt.format(monthlySoftwareTotal)}/mo`);
-  } else if (totalCameras === 0) {
-    breakdownLines.push("  No cameras configured");
+    swLines.push(`Monthly: ${fmt.format(monthlySoftwareTotal)}/mo`);
+    swLines.push(`${state.timeframe}-mo: ${fmt.format(monthlySoftwareTotal * state.timeframe)}`);
   } else {
-    breakdownLines.push("  No software selected - $0/mo");
+    swLines.push("No software selected");
+    swLines.push("$0/mo");
   }
-  breakdownLines.push("");
 
-  // Totals for the selected timeframe (scenario-aware)
+  const cardH = 8 + Math.max(hwLines.length, swLines.length) * 5;
+
+  // Hardware card
+  roundedRect(margin, y, halfWidth, cardH, 3, white, border);
+  doc.setFontSize(9);
+  doc.setTextColor(...navy);
+  doc.setFont(undefined, "bold");
+  doc.text("Hardware Breakdown", margin + 4, y + 6);
+  // One-time tag
+  roundedRect(margin + halfWidth - 22, y + 2, 18, 5, 2, [254, 243, 199], null);
+  doc.setFontSize(6);
+  doc.setTextColor(161, 98, 7);
+  doc.text("One-time", margin + halfWidth - 13, y + 5.5, { align: "center" });
+
+  doc.setFontSize(8);
+  doc.setTextColor(...muted);
+  doc.setFont(undefined, "normal");
+  hwLines.forEach((line, i) => {
+    const isBold = line.startsWith("Total");
+    if (isBold) { doc.setFont(undefined, "bold"); doc.setTextColor(...navy); }
+    doc.text(line, margin + 4, y + 12 + i * 5);
+    if (isBold) { doc.setFont(undefined, "normal"); doc.setTextColor(...muted); }
+  });
+
+  // Software card
+  const swX = margin + halfWidth + 6;
+  roundedRect(swX, y, halfWidth, cardH, 3, white, border);
+  doc.setFontSize(9);
+  doc.setTextColor(...navy);
+  doc.setFont(undefined, "bold");
+  doc.text("Software Analytics", swX + 4, y + 6);
+  // Recurring tag
+  roundedRect(swX + halfWidth - 22, y + 2, 18, 5, 2, [220, 252, 231], null);
+  doc.setFontSize(6);
+  doc.setTextColor(21, 128, 61);
+  doc.text("Recurring", swX + halfWidth - 13, y + 5.5, { align: "center" });
+
+  doc.setFontSize(8);
+  doc.setTextColor(...muted);
+  doc.setFont(undefined, "normal");
+  swLines.forEach((line, i) => {
+    const isBold = line.startsWith("Monthly") || line.includes("-mo:");
+    if (isBold) { doc.setFont(undefined, "bold"); doc.setTextColor(...navy); }
+    doc.text(line, swX + 4, y + 12 + i * 5);
+    if (isBold) { doc.setFont(undefined, "normal"); doc.setTextColor(...muted); }
+  });
+
+  y += cardH + 4;
+
+  // ===== CURRENT VS SIGHTHOUND SIDE-BY-SIDE (or deployment summary) =====
   if (!isScenarioC()) {
-    // Scenarios A & B — include current vs Sighthound comparison
-    breakdownLines.push(
-      `Current Setup — Upfront: ${fmt.format(state.currentUpfront)}, Monthly (${state.timeframe} mo): ${fmt.format(
-        currentMonthlyNormalized * state.timeframe
-      )}, Total: ${fmt.format(currentTotal)}`
-    );
-    breakdownLines.push(
-      `Sighthound — Hardware: ${fmt.format(hardwareTotal)}, Monthly Software (${state.timeframe} mo): ${fmt.format(
-        monthlySoftwareTotal * state.timeframe
-      )}, Total: ${fmt.format(sighthoundTotal)}`
-    );
+    // Current setup
+    roundedRect(margin, y, halfWidth, 28, 3, white, border);
+    doc.setFontSize(9);
+    doc.setTextColor(...navy);
+    doc.setFont(undefined, "bold");
+    doc.text("Current Setup", margin + 4, y + 6);
+    doc.setFontSize(8);
+    doc.setTextColor(...muted);
+    doc.setFont(undefined, "normal");
+    doc.text(`Upfront: ${fmt.format(state.currentUpfront)}`, margin + 4, y + 12);
+    doc.text(`Software (${state.timeframe} mo): ${fmt.format(currentMonthlyNormalized * state.timeframe)}`, margin + 4, y + 17);
+    doc.setFont(undefined, "bold");
+    doc.setTextColor(...navy);
+    doc.text(`Total: ${fmt.format(currentTotal)}`, margin + 4, y + 23);
+
+    // Sighthound
+    roundedRect(swX, y, halfWidth, 28, 3, white, border);
+    doc.setFontSize(9);
+    doc.setTextColor(...navy);
+    doc.setFont(undefined, "bold");
+    doc.text("Sighthound", swX + 4, y + 6);
+    doc.setFontSize(8);
+    doc.setTextColor(...muted);
+    doc.setFont(undefined, "normal");
+    doc.text(`Hardware: ${fmt.format(hardwareTotal)}`, swX + 4, y + 12);
+    doc.text(`Software (${state.timeframe} mo): ${fmt.format(monthlySoftwareTotal * state.timeframe)}`, swX + 4, y + 17);
+    doc.setFont(undefined, "bold");
+    doc.setTextColor(...navy);
+    doc.text(`Total: ${fmt.format(sighthoundTotal)}`, swX + 4, y + 23);
+
+    y += 32;
+
+    // Delta callout
+    const deltaColor = savings > 0 ? green : savings < 0 ? red : muted;
+    const deltaBg = savings > 0 ? [240, 253, 244] : savings < 0 ? [254, 242, 242] : lightBg;
+    const deltaLabel = savings > 0 ? "Estimated Savings" : savings < 0 ? "Additional Investment" : "Break Even";
+    const deltaText = savings !== 0
+      ? `${deltaLabel}: ${fmt.format(Math.abs(savings))} over ${state.timeframe} months (${fmt.format(Math.abs(savingsPerMonth))}/mo)`
+      : "Costs are roughly equivalent to your current setup.";
+
+    roundedRect(margin, y, contentWidth, 12, 3, deltaBg, deltaColor);
+    doc.setFontSize(9);
+    doc.setTextColor(...deltaColor);
+    doc.setFont(undefined, "bold");
+    doc.text(deltaText, margin + 4, y + 8);
+    y += 16;
   } else {
-    // Scenario C — new deployment only, no current baseline
-    breakdownLines.push(
-      `Sighthound deployment — Hardware: ${fmt.format(hardwareTotal)}, Monthly Software (${state.timeframe} mo): ${fmt.format(
-        monthlySoftwareTotal * state.timeframe
-      )}, Total estimated deployment cost: ${fmt.format(sighthoundTotal)}`
-    );
+    // Deployment summary
+    roundedRect(margin, y, contentWidth, 22, 3, white, border);
+    doc.setFontSize(9);
+    doc.setTextColor(...navy);
+    doc.setFont(undefined, "bold");
+    doc.text("Sighthound Deployment", margin + 4, y + 6);
+    doc.setFontSize(8);
+    doc.setTextColor(...muted);
+    doc.setFont(undefined, "normal");
+    doc.text(`Hardware (one-time): ${fmt.format(hardwareTotal)}   |   Software (${state.timeframe} mo): ${fmt.format(monthlySoftwareTotal * state.timeframe)}`, margin + 4, y + 12);
+    doc.setFont(undefined, "bold");
+    doc.setTextColor(...navy);
+    doc.text(`Total Deployment Cost: ${fmt.format(sighthoundTotal)}`, margin + 4, y + 18);
+    y += 26;
   }
 
-  drawCard(
-    isScenarioC() ? "Deployment cost breakdown" : "Cost breakdown",
-    breakdownLines,
-    [16, 185, 129]
-  );
+  // ===== CONFIGURATION SNAPSHOT =====
+  let scenarioDesc = "Custom";
+  if (isScenarioA()) scenarioDesc = state.scenarioAOption === "smart" ? "Smart Cameras (replacement)" : "Standard IP + Nodes (replacement)";
+  if (isScenarioB()) scenarioDesc = "Upgrade existing IP cameras";
+  if (isScenarioC()) scenarioDesc = "New deployment";
 
-  // Card 3: Configuration snapshot
-  let cameraTypeLabel = "Not specified";
-  if (isScenarioA()) {
-    cameraTypeLabel = state.scenarioAOption === "smart"
-      ? "Sighthound Smart Cameras (replacement)"
-      : "Standard IP + Compute Nodes (replacement)";
-  } else if (isScenarioB()) {
-    cameraTypeLabel = "IP cameras";
-  } else if (isScenarioC()) {
-    cameraTypeLabel = "New deployment";
-  }
+  roundedRect(margin, y, contentWidth, 18, 3, lightBg, border);
+  doc.setFontSize(9);
+  doc.setTextColor(...navy);
+  doc.setFont(undefined, "bold");
+  doc.text("Configuration Snapshot", margin + 4, y + 6);
+  doc.setFontSize(8);
+  doc.setTextColor(...muted);
+  doc.setFont(undefined, "normal");
+  doc.text(`Scenario: ${scenarioDesc}   |   Standard IP: ${state.standardCameras}   |   Smart: ${state.smartCameras}   |   Nodes: ${state.computeNodes} (${state.computeNodes * CAMERAS_PER_NODE} cam capacity)`, margin + 4, y + 12);
+  y += 22;
 
-  drawCard(
-    "Configuration snapshot",
-    [
-      `Scenario: ${cameraTypeLabel}`,
-      `Standard IP cameras: ${state.standardCameras}`,
-      `Smart cameras: ${state.smartCameras}`,
-      `Compute nodes: ${state.computeNodes} (up to ${
-        state.computeNodes * CAMERAS_PER_NODE || 0
-      } cameras total capacity)`,
-    ],
-    [59, 130, 246]
-  );
+  // ===== COMPONENT DEFINITIONS =====
+  roundedRect(margin, y, contentWidth, 20, 3, lightBg, border);
+  doc.setFontSize(9);
+  doc.setTextColor(...navy);
+  doc.setFont(undefined, "bold");
+  doc.text("Component Definitions", margin + 4, y + 6);
+  doc.setFontSize(7);
+  doc.setTextColor(...muted);
+  doc.setFont(undefined, "normal");
+  doc.text("Standard IP cameras – Traditional network cameras for general coverage.", margin + 4, y + 11);
+  doc.text("Sighthound Smart cameras – AI-ready cameras with built-in on-device analytics.", margin + 4, y + 15);
+  doc.text("Compute nodes – Edge servers running Sighthound analytics (up to 4 cameras per node).", margin + 4, y + 19);
 
-  // Card 4: What each component does
-  drawCard(
-    "What each component does",
-    [
-      "Standard IP cameras – traditional network cameras that provide general coverage across your site.",
-      "Sighthound Smart cameras – AI-ready cameras with advanced on-device analytics for higher-value streams.",
-      "Compute nodes – small servers that aggregate multiple camera feeds (up to 4 per node) and run Sighthound analytics.",
-    ],
-    [79, 70, 229]
-  );
+  // ===== FOOTER =====
+  doc.setFontSize(7);
+  doc.setTextColor(...muted);
+  doc.text("Sighthound • Savings Analyzer", margin, pageHeight - 8);
+  doc.text("Confidential", pageWidth - margin, pageHeight - 8, { align: "right" });
 
   // Generate PDF blob and attempt download with multiple fallback strategies
   const pdfBlob = doc.output('blob');
