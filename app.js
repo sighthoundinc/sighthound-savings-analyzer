@@ -694,10 +694,20 @@ function attachEventHandlers() {
 
   // Custom HubSpot form submission from popup
   const emailForm = document.getElementById("emailEstimateForm");
-  emailForm?.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  const emailSubmitBtn = emailForm?.querySelector('button[type="submit"]');
+  
+  async function handleEmailFormSubmit(e) {
+    if (e) e.preventDefault();
 
-    const formEl = e.currentTarget;
+    const formEl = emailForm;
+    if (!formEl) return;
+    
+    // Basic validation
+    if (!formEl.checkValidity()) {
+      formEl.reportValidity();
+      return;
+    }
+    
     const portalId = formEl.dataset.portalId;
     const formId = formEl.dataset.formId;
 
@@ -762,6 +772,14 @@ function attachEventHandlers() {
       console.error("HubSpot form submission error", err);
       alert("Something went wrong submitting the form. Please try again.");
     }
+  }
+
+  // Attach to both form submit AND button click for better iframe compatibility
+  emailForm?.addEventListener("submit", handleEmailFormSubmit);
+  emailSubmitBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleEmailFormSubmit(e);
   });
 
   // Thank-you close button inside modal
