@@ -1,5 +1,5 @@
 /* NOTE: This stylesheet was reduced via PurgeCSS based on selectors in index.html and app.js. Original pre-purged file is styles/savings-analyzer.css.bak. */
-@import "https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Roboto:wght@400;500;600;700&display=swap";
+@import "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap";
 @font-face {
   font-family: Materialiconsoutlined;
   font-weight: 400;
@@ -150,11 +150,11 @@ label {
   }
 }
 :root {
-  --_apps---typography--heading-font: Lexend, sans-serif;
+  --_apps---typography--heading-font: Poppins;
   --black: black;
-  --_apps---typography--body-font: Roboto, sans-serif;
+  --_apps---typography--body-font: Poppins;
   --sighthound-blue-4f60dc: #4f60dc;
-  --_apps---typography--button-font: Lexend, sans-serif;
+  --_apps---typography--button-font: Poppins;
   --red-orange-f62470: #f62470;
   --_apps---sizes--radius: 4px;
   --light-orange-f99f25: #f99f25;
